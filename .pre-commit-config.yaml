@@ -1,0 +1,37 @@
+# pre-commit hook configuration for lightrover-workspace (ROS2)
+# Run: pre-commit run --all-files
+# Install: pre-commit install
+
+repos:
+  # YAML lint: validates ROS2 launch files and configuration files
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        args: [--config-file, .yamllint.yml]
+        files: \.(yml|yaml)$
+
+  # Python lint: catches errors, unused imports, and style issues
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.4
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: \.py$
+
+  # Python format: consistent code formatting (separate from lint per lesson-10)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.4
+    hooks:
+      - id: ruff-format
+        files: \.py$
+
+  # XML lint: validates ROS2 package.xml and URDF/SDF files
+  - repo: local
+    hooks:
+      - id: xmllint
+        name: xmllint
+        language: system
+        entry: xmllint --noout
+        files: \.xml$
+        types: [file]

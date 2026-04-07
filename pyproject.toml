@@ -1,0 +1,15 @@
+# pyproject.toml for lightrover-workspace (ROS2)
+# Python tool configuration used by pre-commit hooks and CI
+
+[tool.ruff]
+# Match ROS2 launch file line length convention
+line-length = 120
+# ROS2 Jazzy targets Python 3.10 (Ubuntu 24.04)
+target-version = "py310"
+
+[tool.ruff.lint]
+# E: pycodestyle errors
+# F: pyflakes (undefined names, unused imports)
+# I: isort (import ordering)
+# UP: pyupgrade (modern Python syntax)
+select = ["E", "F", "I", "UP"]
