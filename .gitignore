@@ -1,0 +1,33 @@
+# ROS2 build artifacts (colcon)
+build/
+install/
+log/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+.venv/
+venv/
+.python-version
+
+# Editor / IDE
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# VS Code (track recommended extensions, ignore user settings)
+.vscode/*
+!.vscode/extensions.json
+
+# ROS2 bag files (can be large)
+*.mcap
+*.db3
+
+# Environment files
+.env
