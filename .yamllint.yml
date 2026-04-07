@@ -1,0 +1,16 @@
+# yamllint configuration for lightrover-workspace (ROS2)
+# Extends default rules with ROS2-specific adjustments
+
+extends: default
+
+rules:
+  # ROS2 launch files tend to have long lines (especially in argument lists)
+  line-length:
+    max: 120
+
+  # ROS2 launch files commonly omit the leading '---' document start marker
+  document-start: disable
+
+  # Restrict boolean values to lowercase true/false (avoid yes/no/on/off)
+  truthy:
+    allowed-values: ["true", "false"]
