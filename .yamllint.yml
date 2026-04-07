@@ -12,5 +12,6 @@ rules:
   document-start: disable
 
   # Restrict boolean values to lowercase true/false (avoid yes/no/on/off)
+  # "on" is allowed for GitHub Actions workflow triggers
   truthy:
-    allowed-values: ["true", "false"]
+    allowed-values: ["true", "false", "on"]
