@@ -62,12 +62,7 @@ def main():
     pr_title = os.environ.get("PR_TITLE", "")
     pr_body = os.environ.get("PR_BODY", "")
 
-    user_prompt = (
-        f"## レビュー対象 PR\n\n"
-        f"PR タイトル: {pr_title}\n"
-        f"PR 説明: {pr_body}\n\n"
-        f"## 変更差分\n\n{diff_content}"
-    )
+    user_prompt = f"## レビュー対象 PR\n\nPR タイトル: {pr_title}\nPR 説明: {pr_body}\n\n## 変更差分\n\n{diff_content}"
 
     client = anthropic.Anthropic()
     message = client.messages.create(
