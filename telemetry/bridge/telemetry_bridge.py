@@ -63,6 +63,7 @@ def odom_msg_to_point(msg: Odometry, robot_id: str) -> Point:
     vel = msg.twist.twist
 
     yaw = quaternion_to_yaw(ori.x, ori.y, ori.z, ori.w)
+    # 合成速度: XY平面上の速度ベクトルの大きさ（Lightrover は平面走行のため Z 成分は無視）
     speed = math.sqrt(vel.linear.x**2 + vel.linear.y**2)
 
     return (
