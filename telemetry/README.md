@@ -1,6 +1,6 @@
 # Lightrover テレメトリダッシュボード
 
-Lightrover の走行データ（速度・位置・軌跡）をリアルタイムで可視化するシステムです。
+Lightrover の走行データ（速度・位置・姿勢・軌跡）をリアルタイムで可視化するシステムです。
 InfluxDB 2.7 + Grafana 10.4 を Docker Compose で一括起動し、ROS2 の `/odom`・`/cmd_vel` トピックをブラウザで可視化します。
 
 ```
