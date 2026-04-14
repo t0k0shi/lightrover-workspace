@@ -11,7 +11,7 @@ providers:
     folder: 'Lightrover'
     folderUid: 'lightrover'
     type: file
-    disableDeletion: false
+    disableDeletion: true
     # 30秒ごとにJSONの変更を検出して自動リロード（開発時に便利）
     updateIntervalSeconds: 30
     # UI からのダッシュボード編集を許可（管理者のみ。匿名Viewerは不可）

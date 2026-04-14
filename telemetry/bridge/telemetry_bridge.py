@@ -109,10 +109,10 @@ class TelemetryBridge(Node):
     """ROS2 /odom, /cmd_vel を InfluxDB に書き込む Bridge ノード。"""
 
     def __init__(self):
-        try:
+        # Node.__init__ は ROS2 環境でのみノード名を受け取る
+        if Node is not object:
             super().__init__('telemetry_bridge')
-        except TypeError:
-            # テスト環境では Node が object に差し替えられるため引数なしで呼ぶ
+        else:
             super().__init__()
 
         # 環境変数から設定を読み込む（FR-003 AC-003-1）

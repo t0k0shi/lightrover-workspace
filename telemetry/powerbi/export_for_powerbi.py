@@ -37,6 +37,13 @@ from influxdb_client import InfluxDBClient
 
 
 # ---------------------------------------------------------------------------
+# 定数
+# ---------------------------------------------------------------------------
+
+SESSION_GAP_SECONDS = 60  # この秒数を超える空白をセッション境界とみなす
+
+
+# ---------------------------------------------------------------------------
 # Flux クエリ定義
 # ---------------------------------------------------------------------------
 
@@ -104,13 +111,15 @@ from(bucket: "{bucket}")
 # ---------------------------------------------------------------------------
 
 def build_velocity_log(client: InfluxDBClient, bucket: str, org: str,
-                       start: str, stop: str, robot_filter: str) -> pd.DataFrame:
+                       start: str, stop: str, robot_filter: str,
+                       query_params: dict) -> pd.DataFrame:
     """velocity_log テーブルを生成する。"""
     query_api = client.query_api()
 
     # odom データ取得
     odom_df = query_api.query_data_frame(
-        _flux_velocity_log(bucket, start, stop, robot_filter), org=org
+        _flux_velocity_log(bucket, start, stop, robot_filter), org=org,
+        params=query_params
     )
     if isinstance(odom_df, list):
         odom_df = pd.concat(odom_df, ignore_index=True) if odom_df else pd.DataFrame()
@@ -119,10 +128,15 @@ def build_velocity_log(client: InfluxDBClient, bucket: str, org: str,
 
     # cmd_vel データ取得
     cmd_df = query_api.query_data_frame(
-        _flux_cmd_vel_log(bucket, start, stop, robot_filter), org=org
+        _flux_cmd_vel_log(bucket, start, stop, robot_filter), org=org,
+        params=query_params
     )
     if isinstance(cmd_df, list):
         cmd_df = pd.concat(cmd_df, ignore_index=True) if cmd_df else pd.DataFrame()
+
+    # robot_id がタグとして存在しない場合のフォールバック
+    if 'robot_id' not in odom_df.columns:
+        odom_df['robot_id'] = 'unknown'
 
     # odom 列のリネーム
     result = odom_df[['_time', 'robot_id', 'linear_x', 'angular_z', 'speed']].copy()
@@ -151,16 +165,21 @@ def build_velocity_log(client: InfluxDBClient, bucket: str, org: str,
 
 
 def build_trajectory(client: InfluxDBClient, bucket: str, org: str,
-                     start: str, stop: str, robot_filter: str) -> pd.DataFrame:
+                     start: str, stop: str, robot_filter: str,
+                     query_params: dict) -> pd.DataFrame:
     """trajectory テーブルを生成する。"""
     query_api = client.query_api()
     df = query_api.query_data_frame(
-        _flux_trajectory(bucket, start, stop, robot_filter), org=org
+        _flux_trajectory(bucket, start, stop, robot_filter), org=org,
+        params=query_params
     )
     if isinstance(df, list):
         df = pd.concat(df, ignore_index=True) if df else pd.DataFrame()
     if df.empty:
         return pd.DataFrame()
+
+    if 'robot_id' not in df.columns:
+        df['robot_id'] = 'unknown'
 
     result = df[['_time', 'robot_id', 'pos_x', 'pos_y', 'yaw']].copy()
     result = result.rename(columns={'_time': 'timestamp'})
@@ -172,11 +191,13 @@ def build_trajectory(client: InfluxDBClient, bucket: str, org: str,
 
 
 def build_daily_summary(client: InfluxDBClient, bucket: str, org: str,
-                        start: str, stop: str, robot_filter: str) -> pd.DataFrame:
+                        start: str, stop: str, robot_filter: str,
+                        query_params: dict) -> pd.DataFrame:
     """daily_summary テーブルを生成する。"""
     query_api = client.query_api()
     df = query_api.query_data_frame(
-        _flux_daily_stats(bucket, start, stop, robot_filter), org=org
+        _flux_daily_stats(bucket, start, stop, robot_filter), org=org,
+        params=query_params
     )
     if isinstance(df, list):
         df = pd.concat(df, ignore_index=True) if df else pd.DataFrame()
@@ -184,6 +205,8 @@ def build_daily_summary(client: InfluxDBClient, bucket: str, org: str,
         return pd.DataFrame()
 
     df = df.rename(columns={'_time': 'timestamp', '_value': 'speed'})
+    if 'robot_id' not in df.columns:
+        df['robot_id'] = 'unknown'
     df['date'] = pd.to_datetime(df['timestamp']).dt.date
 
     # 日ごと × ロボットごとに集計
@@ -202,7 +225,7 @@ def build_daily_summary(client: InfluxDBClient, bucket: str, org: str,
     for (date, rid), group in df.groupby(['date', 'robot_id']):
         times = pd.to_datetime(group['timestamp']).sort_values()
         gaps = times.diff().dt.total_seconds().fillna(0)
-        count = int((gaps > 60).sum()) + 1
+        count = int((gaps > SESSION_GAP_SECONDS).sum()) + 1
         session_counts.append({'date': date, 'robot_id': rid, 'session_count': count})
     sessions_df = pd.DataFrame(session_counts)
 
@@ -228,8 +251,8 @@ def build_run_sessions(velocity_log: pd.DataFrame) -> pd.DataFrame:
         times = pd.to_datetime(group['timestamp'])
         gaps = times.diff().dt.total_seconds().fillna(0)
 
-        # 60秒超の空白をセッション境界とする
-        session_ids = (gaps > 60).cumsum()
+        # SESSION_GAP_SECONDS 秒超の空白をセッション境界とする
+        session_ids = (gaps > SESSION_GAP_SECONDS).cumsum()
 
         for _, session_group in group.assign(_sid=session_ids).groupby('_sid'):
             ts = pd.to_datetime(session_group['timestamp'])
@@ -329,10 +352,12 @@ def main() -> None:
     start_str = start_dt.strftime('%Y-%m-%dT%H:%M:%SZ')
     stop_str = end_dt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
-    # robot_id フィルタ
+    # robot_id フィルタ（パラメータバインディングでインジェクション防止）
     robot_filter = ''
+    query_params = {}
     if args.robot_id:
-        robot_filter = f'|> filter(fn: (r) => r.robot_id == "{args.robot_id}")'
+        robot_filter = '|> filter(fn: (r) => r.robot_id == params.robot_id)'
+        query_params = {"robot_id": args.robot_id}
 
     # トークン取得
     token = args.token or os.environ.get('INFLUXDB_TOKEN', '')
@@ -359,21 +384,21 @@ def main() -> None:
         # 1. velocity_log（他テーブルの基礎データ）
         print("velocity_log を取得中...")
         velocity_log = build_velocity_log(
-            client, args.bucket, args.org, start_str, stop_str, robot_filter
+            client, args.bucket, args.org, start_str, stop_str, robot_filter, query_params
         )
         save_table(velocity_log, 'velocity_log', output_dir, args.format)
 
         # 2. trajectory
         print("trajectory を取得中...")
         trajectory = build_trajectory(
-            client, args.bucket, args.org, start_str, stop_str, robot_filter
+            client, args.bucket, args.org, start_str, stop_str, robot_filter, query_params
         )
         save_table(trajectory, 'trajectory', output_dir, args.format)
 
         # 3. daily_summary
         print("daily_summary を取得中...")
         daily_summary = build_daily_summary(
-            client, args.bucket, args.org, start_str, stop_str, robot_filter
+            client, args.bucket, args.org, start_str, stop_str, robot_filter, query_params
         )
         save_table(daily_summary, 'daily_summary', output_dir, args.format)
 
