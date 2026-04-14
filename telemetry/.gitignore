@@ -1,0 +1,25 @@
+# 環境変数ファイル（パスワード・トークンを含む）
+.env
+.env.local
+*.env.local
+
+# InfluxDB・Grafanaのデータボリューム
+/data/
+influxdb-data/
+grafana-data/
+
+# Pythonキャッシュ
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# エクスポートファイル（再生成可能）
+powerbi/export/
+*.csv
+*.parquet
+
+# OS
+.DS_Store
+Thumbs.db

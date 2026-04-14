@@ -1,0 +1,97 @@
+# Lightrover テレメトリダッシュボード - Docker Compose
+#
+# 使用方法:
+#   起動: docker compose up -d
+#   停止: docker compose down
+#   データごと削除: docker compose down -v  ← 注意: 走行データも消える
+#   ログ確認: docker compose logs -f
+#
+# 事前準備:
+#   cp .env.example .env
+#   .env のパスワード・トークンをセミナー前に変更すること（E-A1 Mediator条件）
+
+services:
+
+  # ============================================================
+  # InfluxDB 2.7 — 時系列データベース
+  # ============================================================
+  influxdb:
+    image: influxdb:2.7
+    container_name: lightrover_influxdb
+    restart: unless-stopped        # NFR-005: 無計画停止ゼロ対策
+    ports:
+      - "8086:8086"                # D.1: ポート開放要件
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUXDB_ADMIN_USER:-admin}
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUXDB_ADMIN_PASSWORD}
+      DOCKER_INFLUXDB_INIT_ORG: ${INFLUXDB_ORG:-lightrover}
+      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUXDB_BUCKET:-seminar}
+      DOCKER_INFLUXDB_INIT_RETENTION: ${INFLUXDB_RETENTION:-720h}  # NFR-006: 30日保持
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_TOKEN}
+    volumes:
+      - influxdb_data:/var/lib/influxdb2   # FR-014 AC-014-3: データ永続化
+      - influxdb_config:/etc/influxdb2
+    networks:
+      - telemetry_net
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ============================================================
+  # Grafana 10.4.0 — ダッシュボード可視化
+  # NOTE: 10.4.0 以上必須（XY Chart パネルのサポート）
+  # ============================================================
+  grafana:
+    image: grafana/grafana-oss:10.4.0
+    container_name: lightrover_grafana
+    restart: unless-stopped        # NFR-005: 無計画停止ゼロ対策
+    ports:
+      - "3000:3000"                # D.1: ポート開放要件
+    environment:
+      # 管理者認証情報（セミナー前に .env で変更すること）
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      # 匿名アクセス — Viewer権限のみ（FR-015, E-A1 Mediator採用）
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_AUTH_DISABLE_LOGIN_FORM: "false"  # 管理者ログインフォームは残す
+      # プロビジョニング設定
+      GF_PATHS_PROVISIONING: /etc/grafana/provisioning
+      # 起動時のデフォルト画面をLightroverダッシュボードに設定（FR-014 AC-014-2）
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/lightrover.json
+      # InfluxDB 接続情報（provisioning/datasources から参照）
+      INFLUXDB_URL: http://influxdb:8086
+      INFLUXDB_ORG: ${INFLUXDB_ORG:-lightrover}
+      INFLUXDB_BUCKET: ${INFLUXDB_BUCKET:-seminar}
+      INFLUXDB_TOKEN: ${INFLUXDB_TOKEN}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro   # FR-014 AC-014-2
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    networks:
+      - telemetry_net
+
+# ============================================================
+# ネットワーク
+# ============================================================
+networks:
+  telemetry_net:
+    driver: bridge
+
+# ============================================================
+# ボリューム（FR-014 AC-014-3: docker compose down でデータを消さない）
+# ============================================================
+volumes:
+  influxdb_data:
+    name: lightrover_influxdb_data
+  influxdb_config:
+    name: lightrover_influxdb_config
+  grafana_data:
+    name: lightrover_grafana_data
