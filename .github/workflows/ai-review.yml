@@ -45,7 +45,7 @@ jobs:
       - name: Check diff size
         id: size_check
         run: |
-          if [ "${{ steps.diff.outputs.lines }}" -gt 500 ]; then
+          if [ "${{ steps.diff.outputs.lines }}" -gt 800 ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
@@ -92,7 +92,7 @@ jobs:
             --repo ${{ github.repository }} \
             --body "## AI Review
 
-          > **Warning**: この PR は変更行数が 500 行を超えています（${{ needs.review.outputs.diff_lines }} 行）。
+          > **Warning**: この PR は変更行数が 800 行を超えています（${{ needs.review.outputs.diff_lines }} 行）。
           > PR を分割することを検討してください。AI レビューはスキップされました。"
 
       - name: Download review artifacts
