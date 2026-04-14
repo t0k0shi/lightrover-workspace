@@ -156,7 +156,7 @@ def run_review(diff_path: str) -> None:
 
     client = anthropic.Anthropic()
     message = client.messages.create(
-        model="claude-sonnet-4-6-20250514",
+        model=os.environ.get("AI_REVIEW_MODEL", "claude-haiku-4-5-20251001"),
         max_tokens=4096,
         system=system_prompt,
         messages=[{"role": "user", "content": user_prompt}],
