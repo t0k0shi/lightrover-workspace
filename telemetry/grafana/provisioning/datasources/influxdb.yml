@@ -19,6 +19,7 @@ datasources:
       version: Flux
       organization: ${INFLUXDB_ORG}
       defaultBucket: ${INFLUXDB_BUCKET}
+      # ローカル環境専用。本番環境では false に変更すること
       tlsSkipVerify: true
     secureJsonData:
       token: ${INFLUXDB_TOKEN}

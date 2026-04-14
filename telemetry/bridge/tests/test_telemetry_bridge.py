@@ -232,6 +232,17 @@ class TestTelemetryBridgeCallbacks(unittest.TestCase):
         except Exception:
             self.fail('_odom_callback raised an exception on InfluxDB error')
 
+    def test_cmdvel_influxdb_error_does_not_crash(self):
+        """cmd_vel でも InfluxDB への書き込み失敗でクラッシュしないこと（AC-002-3）"""
+        self.mock_write_api.write.side_effect = Exception('Connection refused')
+        msg = Mock()
+        msg.linear.x = 0.2
+        msg.angular.z = 0.0
+        try:
+            self.node._cmdvel_callback(msg)
+        except Exception:
+            self.fail('_cmdvel_callback raised an exception on InfluxDB error')
+
     def test_robot_id_from_env(self):
         """ROBOT_ID 環境変数がタグに反映されること（FR-003 AC-003-1）"""
         self.assertEqual(self.node._robot_id, 'test_rover')
