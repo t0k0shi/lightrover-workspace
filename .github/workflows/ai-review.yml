@@ -4,17 +4,23 @@ on:
   pull_request_target:
     types: [opened, synchronize, reopened]
 
-permissions:
-  pull-requests: write
-  contents: read
-
 jobs:
-  ai-review:
+  # ──────────────────────────────────────────────
+  # Job 1: review (read-only)
+  #   Claude API で構造化レビューを生成し、Artifact に保存する。
+  #   このジョブは PR への書き込み権限を持たない。
+  # ──────────────────────────────────────────────
+  review:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      skip: ${{ steps.size_check.outputs.skip }}
+      diff_lines: ${{ steps.diff.outputs.lines }}
     steps:
       - uses: actions/checkout@v4
         with:
-          # Security: checkout merge commit, not the fork's HEAD directly
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
           fetch-depth: 0
 
@@ -45,8 +51,40 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Post warning for large PR
-        if: steps.size_check.outputs.skip == 'true'
+      - name: Run AI review
+        if: steps.size_check.outputs.skip == 'false'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: python scripts/review_pr.py /tmp/pr_diff.txt
+        timeout-minutes: 5
+
+      - name: Upload review artifacts
+        if: steps.size_check.outputs.skip == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-review-output
+          path: |
+            review.md
+            inline_comments.json
+            verdict.txt
+          retention-days: 7
+
+  # ──────────────────────────────────────────────
+  # Job 2: post-review (write-only)
+  #   Artifact からレビュー結果を読み取り、PR に投稿する。
+  #   AI エージェントは一切実行しない（シェルスクリプトのみ）。
+  # ──────────────────────────────────────────────
+  post-review:
+    needs: review
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Post skip warning
+        if: needs.review.outputs.skip == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -54,18 +92,109 @@ jobs:
             --repo ${{ github.repository }} \
             --body "## AI Review
 
-          > **Warning**: この PR は変更行数が 500 行を超えています（${{ steps.diff.outputs.lines }} 行）。
+          > **Warning**: この PR は変更行数が 500 行を超えています（${{ needs.review.outputs.diff_lines }} 行）。
           > PR を分割することを検討してください。AI レビューはスキップされました。"
 
-      - name: Run AI review
-        if: steps.size_check.outputs.skip == 'false'
+      - name: Download review artifacts
+        if: needs.review.outputs.skip == 'false'
+        uses: actions/download-artifact@v4
+        with:
+          name: ai-review-output
+          path: review-output
+
+      - name: Post review and manage labels
+        if: needs.review.outputs.skip == 'false'
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_TITLE: ${{ github.event.pull_request.title }}
-          PR_BODY: ${{ github.event.pull_request.body }}
           REPO: ${{ github.repository }}
         run: |
-          REVIEW=$(python scripts/review_pr.py /tmp/pr_diff.txt)
-          gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$REVIEW"
+          set -euo pipefail
+
+          REVIEW_BODY=$(cat review-output/review.md)
+          VERDICT=$(cat review-output/verdict.txt | tr -d '[:space:]')
+          INLINE_COMMENTS=$(cat review-output/inline_comments.json)
+
+          # ── Build review comments array for GitHub Reviews API ──
+          COMMENTS_PAYLOAD="[]"
+          COMMENT_COUNT=$(echo "$INLINE_COMMENTS" | jq 'length')
+
+          if [ "$COMMENT_COUNT" -gt 0 ]; then
+            COMMENTS_PAYLOAD=$(echo "$INLINE_COMMENTS" | jq '[
+              .[:10] | .[] | {
+                path: .path,
+                line: .line,
+                body: .body,
+                side: "RIGHT"
+              }
+            ]')
+          fi
+
+          # ── Post review via GitHub Reviews API ──
+          REVIEW_EVENT="COMMENT"
+          REVIEW_PAYLOAD=$(jq -n \
+            --arg body "$REVIEW_BODY" \
+            --arg event "$REVIEW_EVENT" \
+            --argjson comments "$COMMENTS_PAYLOAD" \
+            '{body: $body, event: $event, comments: $comments}')
+
+          HTTP_CODE=$(echo "$REVIEW_PAYLOAD" | gh api \
+            "repos/${REPO}/pulls/${PR_NUMBER}/reviews" \
+            --method POST \
+            --input - \
+            --jq '.id' 2>/dev/null) || {
+            # Fallback: inline comments が diff 外の行を指す場合、
+            # Reviews API が 422 を返す。その場合はコメントなしで再試行。
+            echo "::warning::Inline comments rejected by API. Posting review without inline comments."
+            FALLBACK_PAYLOAD=$(jq -n \
+              --arg body "$REVIEW_BODY" \
+              --arg event "$REVIEW_EVENT" \
+              '{body: $body, event: $event, comments: []}')
+            echo "$FALLBACK_PAYLOAD" | gh api \
+              "repos/${REPO}/pulls/${PR_NUMBER}/reviews" \
+              --method POST \
+              --input -
+
+            # Inline comments を details ブロックとしてコメントに追加
+            if [ "$COMMENT_COUNT" -gt 0 ]; then
+              DETAILS_BODY=$(echo "$INLINE_COMMENTS" | jq -r '
+                .[:10] | .[] |
+                "- **\(.path):\(.line)** (\(.severity)): \(.body)"
+              ')
+              gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$(cat <<EOF
+          <details>
+          <summary>Inline comments (could not attach to diff)</summary>
+
+          ${DETAILS_BODY}
+          </details>
+          EOF
+          )"
+            fi
+          }
+
+          # ── Label management ──
+          ALL_AI_LABELS="do-not-merge ai:changes-requested ai:approved-with-warnings ai:approved"
+
+          # Remove all AI labels first
+          for label in $ALL_AI_LABELS; do
+            gh pr edit "$PR_NUMBER" --repo "$REPO" --remove-label "$label" 2>/dev/null || true
+          done
+
+          # Apply labels based on verdict
+          case "$VERDICT" in
+            CHANGES_REQUESTED)
+              gh pr edit "$PR_NUMBER" --repo "$REPO" --add-label "do-not-merge,ai:changes-requested"
+              echo "::notice::Verdict: CHANGES_REQUESTED — do-not-merge label applied"
+              ;;
+            APPROVED_WITH_WARNINGS)
+              gh pr edit "$PR_NUMBER" --repo "$REPO" --add-label "ai:approved-with-warnings"
+              echo "::notice::Verdict: APPROVED_WITH_WARNINGS"
+              ;;
+            APPROVED)
+              gh pr edit "$PR_NUMBER" --repo "$REPO" --add-label "ai:approved"
+              echo "::notice::Verdict: APPROVED"
+              ;;
+            *)
+              echo "::warning::Unknown verdict: $VERDICT — no labels applied"
+              ;;
+          esac
