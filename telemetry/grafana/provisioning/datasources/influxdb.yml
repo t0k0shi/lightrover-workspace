@@ -1,0 +1,27 @@
+# InfluxDB データソース自動プロビジョニング
+#
+# Grafana 起動時に InfluxDB データソースを自動登録する。
+# 手動設定不要。（FR-014 AC-014-2）
+#
+# 環境変数は docker-compose.yml の grafana サービスから渡される:
+#   INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN
+
+apiVersion: 1
+
+datasources:
+  - name: InfluxDB-Lightrover
+    type: influxdb
+    access: proxy
+    url: ${INFLUXDB_URL}
+    isDefault: true
+    jsonData:
+      # Flux クエリ言語を使用（D.4 技術制約: InfluxDB 2.7 + Flux）
+      version: Flux
+      organization: ${INFLUXDB_ORG}
+      defaultBucket: ${INFLUXDB_BUCKET}
+      tlsSkipVerify: true
+    secureJsonData:
+      token: ${INFLUXDB_TOKEN}
+    # false にすると Grafana UI からデータソースを編集できなくなる
+    # セミナー中に受講者が誤って変更しないよう false を推奨
+    editable: false
