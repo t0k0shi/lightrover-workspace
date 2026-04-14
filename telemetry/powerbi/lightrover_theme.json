@@ -1,0 +1,62 @@
+{
+  "name": "Lightrover Telemetry",
+  "description": "Grafana ダッシュボードと配色を統一した Power BI テーマ（FR-013）",
+  "dataColors": [
+    "#5794F2",
+    "#73BF69",
+    "#E02F44",
+    "#FF9830",
+    "#B877D9",
+    "#F2CC0C",
+    "#3274D9",
+    "#56A64B"
+  ],
+  "background": "#181B1F",
+  "foreground": "#D8D9DA",
+  "tableAccent": "#5794F2",
+  "good": "#73BF69",
+  "neutral": "#FF9830",
+  "bad": "#E02F44",
+  "maximum": "#E02F44",
+  "center": "#FF9830",
+  "minimum": "#73BF69",
+  "visualStyles": {
+    "*": {
+      "*": {
+        "background": [
+          {
+            "color": { "solid": { "color": "#1F2229" } },
+            "transparency": 0
+          }
+        ],
+        "border": [
+          {
+            "color": { "solid": { "color": "#2C3235" } }
+          }
+        ],
+        "title": [
+          {
+            "color": { "solid": { "color": "#D8D9DA" } },
+            "fontFamily": "Segoe UI, sans-serif",
+            "fontSize": 12
+          }
+        ],
+        "labels": [
+          {
+            "color": { "solid": { "color": "#D8D9DA" } }
+          }
+        ]
+      }
+    },
+    "page": {
+      "*": {
+        "background": [
+          {
+            "color": { "solid": { "color": "#181B1F" } },
+            "transparency": 0
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,3 @@
+# TelemetryBridge 依存ライブラリ
+# rclpy, nav_msgs, geometry_msgs は ROS2 Humble 付属のため不要
+influxdb-client>=3.0.0
