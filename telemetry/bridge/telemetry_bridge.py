@@ -20,7 +20,7 @@ import os
 import rclpy
 from geometry_msgs.msg import Twist
 from influxdb_client import InfluxDBClient, Point
-from influxdb_client.client.write_api import ASYNCHRONOUS
+from influxdb_client.client.write_api import SYNCHRONOUS
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy
@@ -126,7 +126,7 @@ class TelemetryBridge(Node):
             token=os.environ.get("INFLUXDB_TOKEN", ""),
             org=self._org,
         )
-        self._write_api = self._influx_client.write_api(write_options=ASYNCHRONOUS)
+        self._write_api = self._influx_client.write_api(write_options=SYNCHRONOUS)
 
         # ROS2 固有の初期化（テスト環境では Node メソッドが存在しないためスキップ）
         try:
