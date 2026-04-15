@@ -267,7 +267,10 @@ sudo chmod 777 /dev/ttyUSB0
 | `/dev/i2c-*` にアクセスできない | 一般ユーザーに権限がない | udev ルール設定（セクション7）または `sudo chmod 777` |
 | colcon build でメモリ不足 | 並列ビルドがメモリを消費 | `--parallel-workers 2` を指定 |
 | ゲームパッドが認識されない | デバイスパスが異なる | `ls /dev/input/js*` で確認し launch ファイルを修正 |
-| | | |
+| `odom_manager` が起動直後にクラッシュ | `tf_transformations` 未インストール | `sudo apt install ros-humble-tf-transformations -y && pip install transforms3d` |
+| nav_base 起動後も `/odom` が publish されない | `odom_manager` が依存パッケージ不足でクラッシュしていた | `ros2 topic hz /odom` で確認 → `odom_manager` のログを確認 |
+| Bridge ノードが InfluxDB に書き込まない（エラーなし） | ASYNCHRONOUS モードがエラーをサイレントに無視 | SYNCHRONOUS モードに変更してエラーを可視化 |
+| `pip install influxdb-client>=3.0.0` が失敗 | PyPI の最新は 1.x 系で 3.x は存在しない | `requirements.txt` を `>=1.30.0` に修正 |
 
 ## 参考リンク
 
