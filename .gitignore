@@ -29,5 +29,11 @@ Thumbs.db
 *.mcap
 *.db3
 
+# Claude Code session state
+SESSION_STATE.md
+
+# Qiita article drafts (managed outside the repo)
+docs/qiita/
+
 # Environment files
 .env
