@@ -14,37 +14,66 @@
 
 ## 2. OS 書き込み
 
-### 2-1. Ubuntu MATE 22.04 イメージの取得
+### 2-1. ヴィストン公式イメージの取得
 
-> 理由: ROS 2 Humble は Ubuntu 22.04 LTS を公式サポートしています。
-> 注意: 公式 WebDoc の `/setup/softwareSetup/` は ROS 1 Melodic + Raspberry Pi OS の古い手順です。
-> ROS 2 を使う場合は Ubuntu MATE 22.04 を使用してください。
+> 理由: ヴィストン公式イメージ（`ubuntu_mate_for_lightrover_20230830.img`）は Ubuntu MATE 22.04 ベースで
+> lightrover 向けに設定済みです。汎用の Ubuntu MATE イメージではなく公式イメージを使用してください。
+> 公式手順: https://vstoneofficial.github.io/lightrover_webdoc/setup/softwareSetupUbuntuRos2_humble/
 
-- [ ] Ubuntu MATE 22.04 の Raspberry Pi 向けイメージをダウンロード
-  - 公式: https://ubuntu-mate.org/download/
-- [ ] Raspberry Pi Imager または balenaEtcher で microSD に書き込み
+- [ ] ヴィストン公式イメージ（`ubuntu_mate_for_lightrover_20230830.img`）をダウンロード
+  - ダウンロードリンクは公式 WebDoc の手順ページを参照（「Save Link As...」でホームフォルダに保存）
+- [ ] balenaEtcher で microSD に書き込み
 
 ### 2-2. 初回起動・ネットワーク設定
 
+> 初期ユーザー: `pi` / パスワード: `raspberry`
+
 - [ ] microSD を Raspberry Pi に挿入し、HDMI モニタとキーボードを接続して起動
-- [ ] 初回ウィザードでロケール、キーボード、ユーザー名・パスワードを設定
-- [ ] Wi-Fi に接続
+- [ ] 初回ウィザードでロケール（日本語）、キーボード（日本語 OADG 109A）、Wi-Fi、タイムゾーン（東京）、ユーザーアカウントを設定
 - [ ] `hostname -I` で IP アドレスを確認（以降 SSH 接続に使用）
 - [ ] SSH を有効化: `sudo systemctl enable ssh && sudo systemctl start ssh`
+
+### 2-3. 自動セットアップスクリプトの実行
+
+> 理由: 公式イメージに付属の `ubuntu22_setup.py` が Raspberry Pi 設定変更と必要ライブラリを一括インストールします。
+
+- [ ] システムアップデートと setuptools のインストール:
+  ```bash
+  sudo apt update && sudo apt upgrade -y
+  sudo apt install python3-setuptools -y
+  ```
+- [ ] セットアップスクリプトを実行:
+  ```bash
+  sudo python3 ubuntu22_setup.py
+  ```
 
 ## 3. ROS 2 Humble インストール
 
 > 理由: LTS リリースであり、2027年5月まで公式サポートされます。
 > lightrover_ros2 の humble ブランチがこのバージョンに対応しています。
+> 公式手順: https://vstoneofficial.github.io/lightrover_webdoc/setup/softwareSetupUbuntuRos2_humble/
 
 - [ ] ロケールを UTF-8 に設定:
   ```bash
+  sudo apt update && sudo apt install locales
   sudo locale-gen en_US en_US.UTF-8
   sudo update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
+  export LANG=en_US.UTF-8
   ```
-- [ ] ROS 2 apt リポジトリの追加（公式手順に従う）
+- [ ] ROS 2 apt リポジトリを追加:
+  ```bash
+  sudo apt install software-properties-common
+  sudo add-apt-repository universe
+  sudo apt update && sudo apt install curl -y
+  sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+    -o /usr/share/keyrings/ros-archive-keyring.gpg
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] \
+    http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" \
+    | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
+  ```
 - [ ] パッケージインストール:
   ```bash
+  sudo apt update && sudo apt upgrade
   sudo apt install ros-humble-desktop ros-dev-tools
   ```
 - [ ] `.bashrc` に追記:
@@ -54,41 +83,20 @@
   ```
 - [ ] 動作確認: `ros2 --version` が表示されること
 
-## 4. YDLiDAR X2 ドライバインストール
-
-> 理由: YDLiDAR X2 は 2D LiDAR センサーで、SLAM（slam_toolbox）に使用します。
-> ROS2 ドライバが別途必要です。
-
-- [ ] YDLiDAR SDK のクローンとビルド:
-  ```bash
-  cd ~
-  git clone https://github.com/YDLIDAR/YDLidar-SDK.git
-  cd YDLidar-SDK && mkdir build && cd build
-  cmake .. && make
-  sudo make install
-  ```
-- [ ] ydlidar_ros2_driver のクローン（ros2_ws に配置）:
-  ```bash
-  cd ~/ros2_ws/src
-  git clone -b humble https://github.com/YDLIDAR/ydlidar_ros2_driver.git
-  ```
-- [ ] udev ルールの初期化:
-  ```bash
-  cd ~/ros2_ws/src/ydlidar_ros2_driver/startup
-  sudo sh initenv.sh
-  ```
-- [ ] USB 接続で `/dev/ttyUSB0` が認識されることを確認:
-  ```bash
-  ls -l /dev/ttyUSB0
-  ```
-
-## 5. lightrover_ros2 ビルド
+## 4. lightrover_ros2 ビルド
 
 > 理由: 本リポジトリのコアパッケージ群です。公式手順ベースでビルドします。
 > 注意: `--parallel-workers 2` は Raspberry Pi のメモリ制約のため。省略するとメモリ不足でビルド失敗の可能性があります。
 
-- [ ] ワークスペースの作成（未作成の場合）: `mkdir -p ~/ros2_ws/src`
-- [ ] 本リポジトリを `~/ros2_ws/src/` に配置
+- [ ] ワークスペースを作成:
+  ```bash
+  mkdir -p ~/ros2_ws/src
+  ```
+- [ ] lightrover_ros2 をクローン:
+  ```bash
+  cd ~/ros2_ws/src
+  git clone --recursive -b humble https://github.com/vstoneofficial/lightrover_ros2.git
+  ```
 - [ ] launch スクリプトに実行権限を付与:
   ```bash
   sudo chmod +x ~/ros2_ws/src/lightrover_ros2/lightrover_ros/lightrover_ros/*.py
@@ -105,7 +113,52 @@
   source ~/.bashrc
   ```
 
-## 6. デバイス権限の設定
+## 5. YDLiDAR X2 ドライバインストール
+
+> 理由: YDLiDAR X2 は 2D LiDAR センサーで、SLAM（slam_toolbox）に使用します。
+> ROS2 ドライバが別途必要です。
+
+- [ ] 依存パッケージのインストール:
+  ```bash
+  sudo apt install cmake pkg-config swig python3-pip -y
+  ```
+- [ ] YDLiDAR SDK のクローンとビルド:
+  ```bash
+  cd ~
+  git clone https://github.com/YDLIDAR/YDLidar-SDK.git
+  cd YDLidar-SDK && mkdir build && cd build
+  cmake .. && make
+  sudo make install
+  ```
+- [ ] ydlidar_ros2_driver のクローンとビルド:
+  ```bash
+  cd ~/ros2_ws/src
+  git clone -b humble https://github.com/YDLIDAR/ydlidar_ros2_driver.git
+  cd ~/ros2_ws/src/ydlidar_ros2_driver/startup
+  sudo chmod 777 ./*
+  sudo sh initenv.sh
+  cd ~/ros2_ws
+  colcon build --symlink-install --cmake-clean-cache --parallel-workers 2
+  ```
+- [ ] USB 接続で `/dev/ttyUSB0` が認識されることを確認:
+  ```bash
+  ls -l /dev/ttyUSB0
+  ```
+
+## 6. ROS_DOMAIN_ID の設定
+
+> 理由: 同一ネットワーク上の複数機体が混信しないよう、機体ごとに異なる ID を割り当てます。
+> DDS によるクロスマシン通信でも、送受信側で ID を揃える必要があります。
+> 指定範囲: 0〜65535（同一ネットワーク内で機体ごとに異なる値を使用）
+
+- [ ] `ROS_DOMAIN_ID` を設定（例: 機体1 は `1`、PC は同じ値に揃える）:
+  ```bash
+  export ROS_DOMAIN_ID=1
+  echo "export ROS_DOMAIN_ID=1" >> ~/.bashrc
+  source ~/.bashrc
+  ```
+
+## 7. デバイス権限の設定
 
 > 理由: ライトローバーの制御基板（VS-WRC201）は I2C 通信、LiDAR は USB シリアルで接続されています。
 > デフォルトでは一般ユーザーにアクセス権がありません。
@@ -133,7 +186,7 @@ sudo chmod 777 /dev/i2c-*
 sudo chmod 777 /dev/ttyUSB0
 ```
 
-## 7. 動作確認（基本 bringup）
+## 8. 動作確認（基本 bringup）
 
 > 理由: ビルドが成功しても、実際にモーターやセンサーが応答するかは実機で確認する必要があります。
 
@@ -147,7 +200,7 @@ sudo chmod 777 /dev/ttyUSB0
   - `/odom`（オドメトリ）
   - `/scan`（LiDAR スキャンデータ）
 
-## 8. YDLiDAR 動作確認
+## 9. YDLiDAR 動作確認
 
 > 理由: SLAM を行う前に、LiDAR 単体でスキャンデータが正しく取得できることを確認します。
 
@@ -158,7 +211,7 @@ sudo chmod 777 /dev/ttyUSB0
 - [ ] `ros2 topic echo /scan` でスキャンデータが流れていることを確認
 - [ ] rviz2 で `/scan` トピックを表示し、スキャン形状が環境と一致することを確認
 
-## 9. ゲームパッド操作
+## 10. ゲームパッド操作
 
 > 理由: SLAM で地図を作成する際、ゲームパッドでロボットを手動操作する必要があります。
 
@@ -182,7 +235,7 @@ sudo chmod 777 /dev/ttyUSB0
   - 右スティック X軸: 旋回（x2.0 rad/s）
   - デバイスパスが異なる場合は launch ファイル内の `/dev/input/js0` を変更
 
-## 10. SLAM（地図作成）
+## 11. SLAM（地図作成）
 
 > 理由: slam_toolbox を使って環境の2D地図を作成します。自律走行（Nav2）の前提となります。
 
@@ -205,13 +258,13 @@ sudo chmod 777 /dev/ttyUSB0
     -f ~/ros2_ws/src/lightrover_ros2/lightrover_navigation/maps/MAPNAME
   ```
 
-## 11. ハマりどころ記録欄
+## 12. ハマりどころ記録欄
 
 > セットアップ中に発生したエラーと解決方法を記録してください。ブログ記事の素材になります。
 
 | 症状 | 原因 | 解決方法 |
 |------|------|---------|
-| `/dev/i2c-*` にアクセスできない | 一般ユーザーに権限がない | udev ルール設定（セクション6）または `sudo chmod 777` |
+| `/dev/i2c-*` にアクセスできない | 一般ユーザーに権限がない | udev ルール設定（セクション7）または `sudo chmod 777` |
 | colcon build でメモリ不足 | 並列ビルドがメモリを消費 | `--parallel-workers 2` を指定 |
 | ゲームパッドが認識されない | デバイスパスが異なる | `ls /dev/input/js*` で確認し launch ファイルを修正 |
 | | | |
@@ -220,5 +273,6 @@ sudo chmod 777 /dev/ttyUSB0
 
 - [lightrover_ros2 公式リポジトリ](https://github.com/vstoneofficial/lightrover_ros2)
 - [ライトローバー WebDoc](https://vstoneofficial.github.io/lightrover_webdoc/)
+- **[ライトローバー公式セットアップ手順 (Ubuntu + ROS 2 Humble)](https://vstoneofficial.github.io/lightrover_webdoc/setup/softwareSetupUbuntuRos2_humble/)** ← 本チェックリストの参照元
 - [ROS 2 Humble インストール (Ubuntu)](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debs.html)
 - [YDLiDAR ROS2 ドライバ](https://github.com/YDLIDAR/ydlidar_ros2_driver)
