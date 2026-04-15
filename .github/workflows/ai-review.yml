@@ -3,6 +3,11 @@ name: AI PR Review
 on:
   pull_request_target:
     types: [opened, synchronize, reopened]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "**.rst"
+      - "**.txt"
 
 jobs:
   # ──────────────────────────────────────────────
