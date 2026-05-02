@@ -77,20 +77,20 @@ case "${1:-}" in
   inference) start_inference ;;
 esac
 
+# ── ROS2 環境読み込み（Jazzy）— 事前チェックより前に source ─────────────────
+set +u
+[ -f /opt/ros/jazzy/setup.bash ] && source /opt/ros/jazzy/setup.bash
+set -u
+export RCUTILS_LOGGING_BUFFERED_STREAM=1
+export LIBGL_ALWAYS_SOFTWARE=1   # CPU only 環境
+
 # ── 事前チェック ──────────────────────────────────────────────────────────────
 log "事前チェック..."
 [ -f "$TELEMETRY_DIR/.env" ] || fail ".env が見つかりません: $TELEMETRY_DIR/.env"
 [ -f "$WORLD_FILE" ]         || fail "arena.sdf が見つかりません: $WORLD_FILE"
-command -v ros2 &>/dev/null   || fail "ROS2 が見つかりません。source /opt/ros/jazzy/setup.bash"
+command -v ros2 &>/dev/null   || fail "ROS2 が見つかりません。/opt/ros/jazzy/setup.bash の source 失敗"
 command -v gz   &>/dev/null   || fail "gz sim が見つかりません。apt install ros-jazzy-ros-gz-sim"
 command -v docker &>/dev/null || fail "Docker が見つかりません"
-
-# ── ROS2 環境読み込み（Jazzy）─────────────────────────────────────────────────
-set +u
-source /opt/ros/jazzy/setup.bash
-set -u
-export RCUTILS_LOGGING_BUFFERED_STREAM=1
-export LIBGL_ALWAYS_SOFTWARE=1   # CPU only 環境
 
 # ── Step 1: InfluxDB + Grafana 起動 ──────────────────────────────────────────
 log "Step 1/5: InfluxDB + Grafana を起動中..."
