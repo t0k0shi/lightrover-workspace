@@ -109,24 +109,33 @@ else
   warn "Grafana ヘルスチェック失敗（続行）"
 fi
 
-# ── ディスプレイ自動検出 ──────────────────────────────────────────────────────
-if [ -z "${DISPLAY:-}" ]; then
-  XSOCK=$(ls /tmp/.X11-unix/X* 2>/dev/null | head -1)
-  if [ -n "$XSOCK" ]; then
-    DISPLAY=":${XSOCK##*X}"
-  else
-    DISPLAY=:0
+# ── ディスプレイ自動検出（GUI モード時のみ）───────────────────────────────────
+HEADLESS="${HEADLESS:-0}"
+if [ "$HEADLESS" != "1" ]; then
+  if [ -z "${DISPLAY:-}" ]; then
+    XSOCK=$(ls /tmp/.X11-unix/X* 2>/dev/null | head -1)
+    if [ -n "$XSOCK" ]; then
+      DISPLAY=":${XSOCK##*X}"
+    else
+      DISPLAY=:0
+    fi
   fi
+  export DISPLAY
+  log "  使用ディスプレイ: $DISPLAY (GUI モード)"
+else
+  log "  HEADLESS=1: gz sim を server-only で起動 (GUI 無し)"
 fi
-export DISPLAY
-log "  使用ディスプレイ: $DISPLAY"
 
 # ── Step 2: gz sim 起動（arena ワールド）─────────────────────────────────────
 log "Step 2/5: gz sim ($WORLD_NAME world) を起動中..."
+GZ_FLAGS="-r"
+if [ "$HEADLESS" = "1" ]; then
+  GZ_FLAGS="-s -r --headless-rendering"
+fi
 nohup bash -c "source /opt/ros/jazzy/setup.bash; \
-  export DISPLAY=$DISPLAY; \
+  export DISPLAY=${DISPLAY:-:0}; \
   export LIBGL_ALWAYS_SOFTWARE=1; \
-  gz sim -r '$WORLD_FILE'" \
+  gz sim $GZ_FLAGS '$WORLD_FILE'" \
   > /tmp/gzsim.log 2>&1 &
 GZ_PID=$!
 log "  gz sim 起動中 (PID: $GZ_PID)。15秒待機..."
