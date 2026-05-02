@@ -1,4 +1,4 @@
-"""TelemetryBridge: ROS2 /odom, /cmd_vel → InfluxDB Bridge ノード
+"""TelemetryBridge: ROS2 /odometry/filtered, /cmd_vel → InfluxDB Bridge ノード
 
 Lightrover の走行データをリアルタイムで InfluxDB に書き込む。
 
@@ -135,9 +135,13 @@ class TelemetryBridge(Node):
                 depth=10,
                 reliability=QoSReliabilityPolicy.BEST_EFFORT,
             )
-            self.create_subscription(Odometry, "/odom", self._odom_callback, qos)
+            # 環境変数 ODOM_TOPIC で切替可能
+            #   TurtleBot3: /odom（Gazebo plugin 直接 publish）
+            #   ROSbot XL: /odometry/filtered（EKF 出力）
+            odom_topic = os.environ.get("ODOM_TOPIC", "/odom")
+            self.create_subscription(Odometry, odom_topic, self._odom_callback, qos)
             self.create_subscription(Twist, "/cmd_vel", self._cmdvel_callback, 10)
-            self.get_logger().info("Subscribed: /odom, /cmd_vel")
+            self.get_logger().info(f"Subscribed: {odom_topic}, /cmd_vel")
         except AttributeError:
             pass
 
