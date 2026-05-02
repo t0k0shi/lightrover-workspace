@@ -57,18 +57,16 @@ start_inference() {
   [ -d "$RL_REPO" ] || fail "ROS2_Gazebo_RL が見つかりません: $RL_REPO"
   [ -f "$RL_CHECKPOINT" ] || warn "チェックポイント未検出: $RL_CHECKPOINT (デフォルトモデルで実行)"
 
-  cd "$RL_REPO"
+  # ROS2_Gazebo_RL のレイアウトは ~/ROS2_Gazebo_RL/rl_ws/ の下に src と install
+  RL_WS="$RL_REPO/rl_ws"
+  cd "$RL_WS"
   set +u
   source /opt/ros/jazzy/setup.bash
-  source "$RL_VENV/bin/activate"
-  [ -f "$RL_REPO/install/setup.bash" ] && source "$RL_REPO/install/setup.bash"
+  [ -f "$RL_WS/install/setup.bash" ] && source "$RL_WS/install/setup.bash"
   set -u
 
-  if [ -f "$RL_CHECKPOINT" ]; then
-    python -m tb3_rl.node_bridge --model "$RL_CHECKPOINT"
-  else
-    python -m tb3_rl.node_bridge
-  fi
+  # venv の python を絶対パスで呼ぶ（システム Python だと pyyaml が無い）
+  "$RL_VENV/bin/python3" -m tb3_rl.infer
   exit 0
 }
 
