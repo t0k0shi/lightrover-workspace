@@ -40,10 +40,6 @@ jobs:
       - name: Run pre-commit
         run: pre-commit run --all-files --show-diff-on-failure
 
-      - name: Setup ruff problem matcher
-        if: failure()
-        run: echo "::add-matcher::${{ github.workspace }}/.github/matchers/ruff.json"
-
       - name: Annotate ruff violations
         if: failure()
-        run: pip install ruff && ruff check --output-format text . || true
+        run: pip install ruff && ruff check --output-format github . || true

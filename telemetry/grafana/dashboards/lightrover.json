@@ -1,7 +1,7 @@
 {
   "uid": "lightrover-telemetry",
-  "title": "Lightrover テレメトリ",
-  "description": "Lightrover 走行データのリアルタイム可視化（速度・位置・軌跡）",
+  "title": "Robot Telemetry Dashboard",
+  "description": "NEDOロボティクスPJ — ROS2走行データのリアルタイム可視化",
   "editable": true,
   "schemaVersion": 38,
   "timezone": "browser",
@@ -12,7 +12,11 @@
   },
   "fiscalYearStartMonth": 0,
   "liveNow": true,
-  "tags": ["lightrover", "ros2", "telemetry"],
+  "tags": [
+    "lightrover",
+    "ros2",
+    "telemetry"
+  ],
   "templating": {
     "list": [
       {
@@ -32,7 +36,11 @@
         "label": "Data Source"
       },
       {
-        "current": {"selected": false, "text": "seminar", "value": "seminar"},
+        "current": {
+          "selected": false,
+          "text": "seminar",
+          "value": "seminar"
+        },
         "hide": 0,
         "label": "Bucket",
         "name": "bucket",
@@ -44,19 +52,33 @@
   "panels": [
     {
       "id": 1,
-      "title": "速度: 指令 vs 実測",
-      "description": "linear_x 指令値（cmd_vel）と合成速度 speed（odom）の比較",
+      "title": "前進速度: 指令 vs 実測",
+      "description": "★ デモ見せ場: linear_x 指令値（cmd_vel 赤）と合成速度 speed（odom 緑）の比較",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
-      "datasource": { "type": "influxdb", "uid": "${datasource}" },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "uid": "P08A17C86DB5B7A23",
+        "type": "influxdb"
+      },
       "targets": [
         {
-          "datasource": { "type": "influxdb", "uid": "${datasource}" },
+          "datasource": {
+            "uid": "P08A17C86DB5B7A23",
+            "type": "influxdb"
+          },
           "query": "from(bucket: v.bucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"cmd_vel\")\n  |> filter(fn: (r) => r._field == \"linear_x\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"指令\")",
           "refId": "A"
         },
         {
-          "datasource": { "type": "influxdb", "uid": "${datasource}" },
+          "datasource": {
+            "uid": "P08A17C86DB5B7A23",
+            "type": "influxdb"
+          },
           "query": "from(bucket: v.bucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"robot_telemetry\")\n  |> filter(fn: (r) => r._field == \"speed\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"実測\")",
           "refId": "B"
         }
@@ -75,44 +97,103 @@
         },
         "overrides": [
           {
-            "matcher": { "id": "byFrameRefID", "options": "A" },
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
             "properties": [
-              { "id": "displayName", "value": "指令 (cmd_vel)" },
-              { "id": "color", "value": { "mode": "fixed", "fixedColor": "#e02f44" } },
-              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } },
-              { "id": "custom.lineWidth", "value": 2 }
+              {
+                "id": "displayName",
+                "value": "指令 (cmd_vel)"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FF6B6B"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              }
             ]
           },
           {
-            "matcher": { "id": "byFrameRefID", "options": "B" },
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
             "properties": [
-              { "id": "displayName", "value": "実測 (odom)" },
-              { "id": "color", "value": { "mode": "fixed", "fixedColor": "#5794F2" } },
-              { "id": "custom.lineWidth", "value": 2 }
+              {
+                "id": "displayName",
+                "value": "実測 (odom)"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#4ECB71"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              }
             ]
           }
         ]
       },
       "options": {
-        "tooltip": { "mode": "multi", "sort": "none" },
-        "legend": { "displayMode": "list", "placement": "bottom" }
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
       }
     },
     {
       "id": 2,
-      "title": "角速度: 指令 vs 実測",
+      "title": "旋回角速度: 指令 vs 実測",
       "description": "angular_z 指令値（cmd_vel）と実測値（odom）の比較",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
-      "datasource": { "type": "influxdb", "uid": "${datasource}" },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "datasource": {
+        "uid": "P08A17C86DB5B7A23",
+        "type": "influxdb"
+      },
       "targets": [
         {
-          "datasource": { "type": "influxdb", "uid": "${datasource}" },
+          "datasource": {
+            "uid": "P08A17C86DB5B7A23",
+            "type": "influxdb"
+          },
           "query": "from(bucket: v.bucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"cmd_vel\")\n  |> filter(fn: (r) => r._field == \"angular_z\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"指令\")",
           "refId": "A"
         },
         {
-          "datasource": { "type": "influxdb", "uid": "${datasource}" },
+          "datasource": {
+            "uid": "P08A17C86DB5B7A23",
+            "type": "influxdb"
+          },
           "query": "from(bucket: v.bucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"robot_telemetry\")\n  |> filter(fn: (r) => r._field == \"angular_z\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"実測\")",
           "refId": "B"
         }
@@ -131,27 +212,72 @@
         },
         "overrides": [
           {
-            "matcher": { "id": "byFrameRefID", "options": "A" },
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
             "properties": [
-              { "id": "displayName", "value": "指令 (cmd_vel)" },
-              { "id": "color", "value": { "mode": "fixed", "fixedColor": "#e02f44" } },
-              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } },
-              { "id": "custom.lineWidth", "value": 2 }
+              {
+                "id": "displayName",
+                "value": "指令 (cmd_vel)"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#e02f44"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              }
             ]
           },
           {
-            "matcher": { "id": "byFrameRefID", "options": "B" },
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
             "properties": [
-              { "id": "displayName", "value": "実測 (odom)" },
-              { "id": "color", "value": { "mode": "fixed", "fixedColor": "#5794F2" } },
-              { "id": "custom.lineWidth", "value": 2 }
+              {
+                "id": "displayName",
+                "value": "実測 (odom)"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              }
             ]
           }
         ]
       },
       "options": {
-        "tooltip": { "mode": "multi", "sort": "none" },
-        "legend": { "displayMode": "list", "placement": "bottom" }
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
       }
     },
     {
@@ -159,11 +285,22 @@
       "title": "現在速度",
       "description": "リアルタイム走行速度（0〜0.6 m/s）",
       "type": "gauge",
-      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 8 },
-      "datasource": { "type": "influxdb", "uid": "${datasource}" },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "datasource": {
+        "uid": "P08A17C86DB5B7A23",
+        "type": "influxdb"
+      },
       "targets": [
         {
-          "datasource": { "type": "influxdb", "uid": "${datasource}" },
+          "datasource": {
+            "uid": "P08A17C86DB5B7A23",
+            "type": "influxdb"
+          },
           "query": "from(bucket: v.bucket)\n  |> range(start: -5s)\n  |> filter(fn: (r) => r._measurement == \"robot_telemetry\")\n  |> filter(fn: (r) => r._field == \"speed\")\n  |> last()",
           "refId": "A"
         }
@@ -177,9 +314,18 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 0.3 },
-              { "color": "red", "value": 0.5 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.3
+              },
+              {
+                "color": "red",
+                "value": 0.5
+              }
             ]
           }
         },
@@ -187,7 +333,9 @@
       },
       "options": {
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -200,11 +348,22 @@
       "title": "現在角速度",
       "description": "リアルタイム角速度（-2.0〜2.0 rad/s）",
       "type": "gauge",
-      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 8 },
-      "datasource": { "type": "influxdb", "uid": "${datasource}" },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 0,
+        "y": 12
+      },
+      "datasource": {
+        "uid": "P08A17C86DB5B7A23",
+        "type": "influxdb"
+      },
       "targets": [
         {
-          "datasource": { "type": "influxdb", "uid": "${datasource}" },
+          "datasource": {
+            "uid": "P08A17C86DB5B7A23",
+            "type": "influxdb"
+          },
           "query": "from(bucket: v.bucket)\n  |> range(start: -5s)\n  |> filter(fn: (r) => r._measurement == \"robot_telemetry\")\n  |> filter(fn: (r) => r._field == \"angular_z\")\n  |> last()",
           "refId": "A"
         }
@@ -218,9 +377,18 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 1.0 },
-              { "color": "red", "value": 1.8 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1.0
+              },
+              {
+                "color": "red",
+                "value": 1.8
+              }
             ]
           }
         },
@@ -228,7 +396,9 @@
       },
       "options": {
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -241,11 +411,22 @@
       "title": "ロボット姿勢 (yaw)",
       "description": "ヨー角 -180°〜180°（デッドレコニング）",
       "type": "gauge",
-      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 8 },
-      "datasource": { "type": "influxdb", "uid": "${datasource}" },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "datasource": {
+        "uid": "P08A17C86DB5B7A23",
+        "type": "influxdb"
+      },
       "targets": [
         {
-          "datasource": { "type": "influxdb", "uid": "${datasource}" },
+          "datasource": {
+            "uid": "P08A17C86DB5B7A23",
+            "type": "influxdb"
+          },
           "query": "from(bucket: v.bucket)\n  |> range(start: -5s)\n  |> filter(fn: (r) => r._measurement == \"robot_telemetry\")\n  |> filter(fn: (r) => r._field == \"yaw\")\n  |> last()\n  |> map(fn: (r) => ({r with _value: r._value * 57.29577951}))",
           "refId": "A"
         }
@@ -259,7 +440,10 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "blue", "value": null }
+              {
+                "color": "blue",
+                "value": null
+              }
             ]
           }
         },
@@ -267,7 +451,9 @@
       },
       "options": {
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -280,11 +466,22 @@
       "title": "総走行距離",
       "description": "速度の時間積分による累積走行距離",
       "type": "stat",
-      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 8 },
-      "datasource": { "type": "influxdb", "uid": "${datasource}" },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 0,
+        "y": 20
+      },
+      "datasource": {
+        "uid": "P08A17C86DB5B7A23",
+        "type": "influxdb"
+      },
       "targets": [
         {
-          "datasource": { "type": "influxdb", "uid": "${datasource}" },
+          "datasource": {
+            "uid": "P08A17C86DB5B7A23",
+            "type": "influxdb"
+          },
           "query": "from(bucket: v.bucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"robot_telemetry\")\n  |> filter(fn: (r) => r._field == \"speed\")\n  |> integral(unit: 1s)",
           "refId": "A"
         }
@@ -296,7 +493,10 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null }
+              {
+                "color": "green",
+                "value": null
+              }
             ]
           }
         },
@@ -304,7 +504,9 @@
       },
       "options": {
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -316,14 +518,25 @@
     },
     {
       "id": 6,
-      "title": "走行軌跡",
-      "description": "pos_x / pos_y の 2D 散布図（オドメトリドリフトあり）",
+      "title": "走行軌跡 (XY)",
+      "description": "★ デモ見せ場: pos_x / pos_y の 2D 散布図",
       "type": "xychart",
-      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 16 },
-      "datasource": { "type": "influxdb", "uid": "${datasource}" },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 12,
+        "y": 20
+      },
+      "datasource": {
+        "uid": "P08A17C86DB5B7A23",
+        "type": "influxdb"
+      },
       "targets": [
         {
-          "datasource": { "type": "influxdb", "uid": "${datasource}" },
+          "datasource": {
+            "uid": "P08A17C86DB5B7A23",
+            "type": "influxdb"
+          },
           "query": "from(bucket: v.bucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"robot_telemetry\")\n  |> filter(fn: (r) => r._field == \"pos_x\" or r._field == \"pos_y\")\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")",
           "refId": "A"
         }
@@ -361,16 +574,30 @@
       "title": "位置 X/Y 時系列",
       "description": "pos_x・pos_y の時間変化",
       "type": "timeseries",
-      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 16 },
-      "datasource": { "type": "influxdb", "uid": "${datasource}" },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 0,
+        "y": 26
+      },
+      "datasource": {
+        "uid": "P08A17C86DB5B7A23",
+        "type": "influxdb"
+      },
       "targets": [
         {
-          "datasource": { "type": "influxdb", "uid": "${datasource}" },
+          "datasource": {
+            "uid": "P08A17C86DB5B7A23",
+            "type": "influxdb"
+          },
           "query": "from(bucket: v.bucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"robot_telemetry\")\n  |> filter(fn: (r) => r._field == \"pos_x\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"pos_x\")",
           "refId": "A"
         },
         {
-          "datasource": { "type": "influxdb", "uid": "${datasource}" },
+          "datasource": {
+            "uid": "P08A17C86DB5B7A23",
+            "type": "influxdb"
+          },
           "query": "from(bucket: v.bucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"robot_telemetry\")\n  |> filter(fn: (r) => r._field == \"pos_y\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"pos_y\")",
           "refId": "B"
         }
@@ -389,24 +616,54 @@
         },
         "overrides": [
           {
-            "matcher": { "id": "byFrameRefID", "options": "A" },
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
             "properties": [
-              { "id": "displayName", "value": "pos_x" },
-              { "id": "color", "value": { "mode": "fixed", "fixedColor": "#5794F2" } }
+              {
+                "id": "displayName",
+                "value": "pos_x"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              }
             ]
           },
           {
-            "matcher": { "id": "byFrameRefID", "options": "B" },
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
             "properties": [
-              { "id": "displayName", "value": "pos_y" },
-              { "id": "color", "value": { "mode": "fixed", "fixedColor": "#73BF69" } }
+              {
+                "id": "displayName",
+                "value": "pos_y"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#73BF69"
+                }
+              }
             ]
           }
         ]
       },
       "options": {
-        "tooltip": { "mode": "multi", "sort": "none" },
-        "legend": { "displayMode": "list", "placement": "bottom" }
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
       }
     }
   ],
@@ -414,7 +671,10 @@
     "list": [
       {
         "builtIn": 1,
-        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
         "enable": true,
         "hide": true,
         "iconColor": "rgba(0, 211, 255, 1)",
